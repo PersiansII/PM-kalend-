@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Summer Calendar 2025</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f8fafc;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 30px;
+    }
+    .calendar-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      padding: 20px;
+    }
+    .month {
+      width: 100%;
+      max-width: 800px;
+    }
+    .month h2 {
+      margin-bottom: 10px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+    .day {
+      background: #ffffff;
+      border: 1px solid #ccc;
+      min-height: 80px;
+      position: relative;
+      padding-bottom: 10px;
+    }
+    .day-number {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 12px;
+      color: #333;
+    }
+    .tokens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .token-wrapper {
+      position: relative;
+    }
+    .token {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      position: relative;
+    }
+    .token::after {
+      content: attr(data-name);
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+    .token:hover::after {
+      opacity: 1;
+    }
+    .form {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    input[type="color"] {
+      border: none;
+      background: none;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      background-color: #4f46e5;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Summer Calendar 2025</h1>
+  <div class="form">
+    <input type="text" id="username" placeholder="Your name" />
+    <input type="color" id="usercolor" value="#00bcd4" />
+    <button onclick="setCurrentUser()">Set</button>
+  </div>
+  <div class="calendar-container" id="calendar"></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzqufwX_vwfBs1xZS19p0YM_8uGp2Up4Np2QJUIwoScPe5tPMZEa0fs9XrfKELaR2qEoA/exec";
+    const months = ["June", "July", "August"];
+    const daysInMonth = [30, 31, 31];
+    let currentUser = null;
+    let currentColor = null;
+    const calendarData = {};
+
+    function setCurrentUser() {
+      currentUser = document.getElementById("username").value.trim();
+      currentColor = document.getElementById("usercolor").value;
+      if (!currentUser) alert("Please enter your name");
+    }
+
+    function createCalendar() {
+      const container = document.getElementById("calendar");
+      container.innerHTML = "";
+
+      months.forEach((month, index) => {
+        const monthDiv = document.createElement("div");
+        monthDiv.className = "month";
+        monthDiv.innerHTML = `<h2>${month} 2025</h2>`;
+
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        for (let i = 1; i <= daysInMonth[index]; i++) {
+          const dateId = `${month}-${i}`;
+          const dayDiv = document.createElement("div");
+          dayDiv.className = "day";
+          dayDiv.onclick = () => toggleToken(dateId);
+
+          const dayNumber = document.createElement("div");
+          dayNumber.className = "day-number";
+          dayNumber.textContent = i;
+
+          const tokens = document.createElement("div");
+          tokens.className = "tokens";
+          tokens.id = `tokens-${dateId}`;
+
+          dayDiv.appendChild(dayNumber);
+          dayDiv.appendChild(tokens);
+          grid.appendChild(dayDiv);
+        }
+
+        monthDiv.appendChild(grid);
+        container.appendChild(monthDiv);
+      });
+    }
+
+    function toggleToken(dateId) {
+      if (!currentUser || !currentColor) {
+        alert("Set your name and color first!");
+        return;
+      }
+
+      const tokens = calendarData[dateId] || [];
+      const index = tokens.findIndex(t => t.name === currentUser);
+
+      if (index !== -1) {
+        tokens.splice(index, 1);
+        sendToSheet(dateId, currentUser, null); // Delete
+      } else {
+        tokens.push({ name: currentUser, color: currentColor });
+        sendToSheet(dateId, currentUser, currentColor); // Add
+      }
+      calendarData[dateId] = tokens;
+      renderTokens(dateId);
+    }
+
+    function renderTokens(dateId) {
+      const tokensDiv = document.getElementById(`tokens-${dateId}`);
+      tokensDiv.innerHTML = "";
+      (calendarData[dateId] || []).forEach(t => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "token-wrapper";
+
+        const token = document.createElement("div");
+        token.className = "token";
+        token.style.backgroundColor = t.color;
+        token.setAttribute("data-name", t.name);
+
+        wrapper.appendChild(token);
+        tokensDiv.appendChild(wrapper);
+      });
+    }
+
+    function sendToSheet(date, name, color) {
+      fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ date, name, color }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+
+    function loadFromSheet() {
+      fetch(API_URL)
+        .then(res => res.json())
+        .then(data => {
+          data.forEach(entry => {
+            const { date, name, color } = entry;
+            if (!calendarData[date]) calendarData[date] = [];
+            calendarData[date].push({ name, color });
+          });
+
+          Object.keys(calendarData).forEach(renderTokens);
+        });
+    }
+
+    createCalendar();
+    loadFromSheet();
+  </script>
+</body>
+</html>
