@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PM Párty Kalendář 2025</title>
+  <title>Summer Calendar 2025</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -123,7 +125,19 @@
   <div class="calendar-container" id="calendar"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzqufwX_vwfBs1xZS19p0YM_8uGp2Up4Np2QJUIwoScPe5tPMZEa0fs9XrfKELaR2qEoA/exec";
+    const firebaseConfig = {
+      apiKey: "AIzaSyA14SzYn760KjtniywMQw5OYnBn_A7WQFQ",
+      authDomain: "calendar-fa1d4.firebaseapp.com",
+      databaseURL: "https://calendar-fa1d4-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "calendar-fa1d4",
+      storageBucket: "calendar-fa1d4.firebasestorage.app",
+      messagingSenderId: "144459239524",
+      appId: "1:144459239524:web:ea0e1bbeace53b49314f71"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     const months = ["June", "July", "August"];
     const daysInMonth = [30, 31, 31];
     let currentUser = null;
@@ -183,12 +197,11 @@
 
       if (index !== -1) {
         tokens.splice(index, 1);
-        sendToSheet(dateId, currentUser, null); // Delete
       } else {
         tokens.push({ name: currentUser, color: currentColor });
-        sendToSheet(dateId, currentUser, currentColor); // Add
       }
       calendarData[dateId] = tokens;
+      db.ref("calendarData/" + dateId).set(tokens);
       renderTokens(dateId);
     }
 
@@ -209,32 +222,20 @@
       });
     }
 
-    function sendToSheet(date, name, color) {
-      fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ date, name, color }),
-        headers: {
-          "Content-Type": "application/json"
+    function loadFromFirebase() {
+      db.ref("calendarData").once("value", snapshot => {
+        const data = snapshot.val();
+        if (data) {
+          Object.keys(data).forEach(dateId => {
+            calendarData[dateId] = data[dateId];
+            renderTokens(dateId);
+          });
         }
       });
     }
 
-    function loadFromSheet() {
-      fetch(API_URL)
-        .then(res => res.json())
-        .then(data => {
-          data.forEach(entry => {
-            const { date, name, color } = entry;
-            if (!calendarData[date]) calendarData[date] = [];
-            calendarData[date].push({ name, color });
-          });
-
-          Object.keys(calendarData).forEach(renderTokens);
-        });
-    }
-
     createCalendar();
-    loadFromSheet();
+    loadFromFirebase();
   </script>
 </body>
 </html>
