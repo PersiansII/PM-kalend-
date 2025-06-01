@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PM Kalendář</title>
+  <title>Letní Kalendář 2025</title>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
@@ -113,17 +113,26 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      max-width: 800px;
+      margin: 0 auto 10px auto;
+      font-weight: bold;
+    }
+    .weekday {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <h1>PM Letní Párty Kalendář 2025</h1>
+  <h1>Letní Kalendář 2025</h1>
   <div class="form">
-    <input type="text" id="username" placeholder="Your name" />
+    <input type="text" id="username" placeholder="Tvé jméno" />
     <input type="color" id="usercolor" value="#00bcd4" />
-    <button onclick="setCurrentUser()">Set</button>
+    <button onclick="setCurrentUser()">Nastavit</button>
   </div>
   <div class="calendar-container" id="calendar"></div>
-
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyA14SzYn760KjtniywMQw5OYnBn_A7WQFQ",
@@ -134,67 +143,70 @@
       messagingSenderId: "144459239524",
       appId: "1:144459239524:web:ea0e1bbeace53b49314f71"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
-    const months = ["June", "July", "August"];
+    const months = ["Červen", "Červenec", "Srpen"];
+    const monthNames = ["Červen", "Červenec", "Srpen"];
     const daysInMonth = [30, 31, 31];
     let currentUser = null;
     let currentColor = null;
     const calendarData = {};
-
     function setCurrentUser() {
       currentUser = document.getElementById("username").value.trim();
       currentColor = document.getElementById("usercolor").value;
-      if (!currentUser) alert("Please enter your name");
+      if (!currentUser) alert("Zadej prosím své jméno");
     }
-
     function createCalendar() {
       const container = document.getElementById("calendar");
       container.innerHTML = "";
-
+      const weekdays = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
       months.forEach((month, index) => {
         const monthDiv = document.createElement("div");
         monthDiv.className = "month";
-        monthDiv.innerHTML = `<h2>${month} 2025</h2>`;
-
+        monthDiv.innerHTML = `<h2>${monthNames[index]} 2025</h2>`;
+        const header = document.createElement("div");
+        header.className = "weekdays";
+        weekdays.forEach(day => {
+          const el = document.createElement("div");
+          el.className = "weekday";
+          el.textContent = day;
+          header.appendChild(el);
+        });
+        monthDiv.appendChild(header);
         const grid = document.createElement("div");
         grid.className = "grid";
-
+        let firstDayOffsets = [6, 1, 4];
+        for (let i = 0; i < firstDayOffsets[index]; i++) {
+          const emptyDiv = document.createElement("div");
+          emptyDiv.className = "day";
+          grid.appendChild(emptyDiv);
+        }
         for (let i = 1; i <= daysInMonth[index]; i++) {
           const dateId = `${month}-${i}`;
           const dayDiv = document.createElement("div");
           dayDiv.className = "day";
           dayDiv.onclick = () => toggleToken(dateId);
-
           const dayNumber = document.createElement("div");
           dayNumber.className = "day-number";
           dayNumber.textContent = i;
-
           const tokens = document.createElement("div");
           tokens.className = "tokens";
           tokens.id = `tokens-${dateId}`;
-
           dayDiv.appendChild(dayNumber);
           dayDiv.appendChild(tokens);
           grid.appendChild(dayDiv);
         }
-
         monthDiv.appendChild(grid);
         container.appendChild(monthDiv);
       });
     }
-
     function toggleToken(dateId) {
       if (!currentUser || !currentColor) {
-        alert("Set your name and color first!");
+        alert("Nejprve nastav své jméno a barvu!");
         return;
       }
-
       const tokens = calendarData[dateId] || [];
       const index = tokens.findIndex(t => t.name === currentUser);
-
       if (index !== -1) {
         tokens.splice(index, 1);
       } else {
@@ -204,24 +216,20 @@
       db.ref("calendarData/" + dateId).set(tokens);
       renderTokens(dateId);
     }
-
     function renderTokens(dateId) {
       const tokensDiv = document.getElementById(`tokens-${dateId}`);
       tokensDiv.innerHTML = "";
       (calendarData[dateId] || []).forEach(t => {
         const wrapper = document.createElement("div");
         wrapper.className = "token-wrapper";
-
         const token = document.createElement("div");
         token.className = "token";
         token.style.backgroundColor = t.color;
         token.setAttribute("data-name", t.name);
-
         wrapper.appendChild(token);
         tokensDiv.appendChild(wrapper);
       });
     }
-
     function loadFromFirebase() {
       db.ref("calendarData").once("value", snapshot => {
         const data = snapshot.val();
@@ -233,7 +241,6 @@
         }
       });
     }
-
     createCalendar();
     loadFromFirebase();
   </script>
